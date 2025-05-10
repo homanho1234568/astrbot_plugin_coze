@@ -6,13 +6,7 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger, AstrBotConfig
 import httpx
 
-@register(
-    name="YuanQiPlugin",
-    author="Homanho",
-    description="一個用於與騰訊元器 API 交互的插件",
-    version="v1.0",
-    repo_url="https://github.com/homanho1234568/astrbot_plugin_yuanqi/"
-)
+@register("YuanQiPlugin", "Homanho", "一個用於與騰訊元器 API 交互的插件", "v1.0")
 class YuanQiPlugin(Star):
     def __init__(self, context: Context, config: Optional[AstrBotConfig] = None):
         super().__init__(context)
