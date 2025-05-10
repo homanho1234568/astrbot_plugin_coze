@@ -24,6 +24,9 @@ class YuanQiPlugin(Star):
     async def handle_yuanqi_command(self, event: AstrMessageEvent, context: Context, *args, **kwargs):
         """Handle /yuanqi command to interact with Tencent YuanQi API."""
         try:
+            # Log extra arguments for debugging
+            logger.info(f"Received args: {args}, kwargs: {kwargs}")
+
             # Validate configuration
             is_valid, error_msg = self.validate_config()
             if not is_valid:
