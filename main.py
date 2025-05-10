@@ -1,45 +1,23 @@
 import json
 import os
 from typing import Optional
-from astrbot.core.plugin import BaseStarPlugin, PluginMetadata
-from astrbot.core.message.event import AstrMessageEvent
-from astrbot.core.logger import logger
+from astrbot.api.star import Star, Context, register
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api import logger, AstrBotConfig
 import httpx
-from astrbot.core.filter import filter
 
-class YuanQiPlugin(BaseStarPlugin):
-    def __init__(self):
-        super().__init__()
-        self.metadata = PluginMetadata(
-            plugin_name="YuanQiPlugin",
-            description="A plugin to interact with Tencent YuanQi API",
-            version="1.0.0",
-            author="Grok"
-        )
-        self.config = self.load_config()
+@register(
+    name="YuanQiPlugin",
+    author="Homanho",
+    description="一個用於與騰訊元器 API 交互的插件",
+    version="v1.0",
+    repo_url="https://github.com/homanho1234568/astrbot_plugin_yuanqi/"
+)
+class YuanQiPlugin(Star):
+    def __init__(self, context: Context, config: Optional[AstrBotConfig] = None):
+        super().__init__(context)
+        self.config = config or {}
         self.validate_config()
-
-    def load_config(self) -> dict:
-        """Load configuration from config.json in data directory."""
-        config_path = os.path.join("data", "yuanqi_plugin", "config.json")
-        default_config = {
-            "agent_id": "",
-            "token": "",
-            "api_url": "https://api.hunyuan.tencent.com/v1/agents"
-        }
-
-        try:
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
-            if not os.path.exists(config_path):
-                with open(config_path, 'w', encoding='utf-8') as f:
-                    json.dump(default_config, f, ensure_ascii=False, indent=4)
-                logger.info("Created default config file for YuanQiPlugin.")
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            return config
-        except Exception as e:
-            logger.error(f"Failed to load config: {e}")
-            return default_config
 
     def validate_config(self):
         """Validate configuration parameters."""
@@ -95,8 +73,8 @@ class YuanQiPlugin(BaseStarPlugin):
 
     async def on_load(self):
         """Called when the plugin is loaded."""
-        logger.info(f"{self.metadata.plugin_name} v{self.metadata.version} loaded.")
+        logger.info(f"YuanQiPlugin loaded.")
 
     async def on_unload(self):
         """Called when the plugin is unloaded."""
-        logger.info(f"{self.metadata.plugin_name} unloaded.")
+        logger.info(f"YuanQiPlugin unloaded.")
