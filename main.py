@@ -21,7 +21,7 @@ class YuanQiPlugin(Star):
         return True, None
 
     @filter.command("yuanqi")
-    async def handle_yuanqi_command(self, event: AstrMessageEvent):
+    async def handle_yuanqi_command(self, event: AstrMessageEvent, context: Context, *args, **kwargs):
         """Handle /yuanqi command to interact with Tencent YuanQi API."""
         try:
             # Validate configuration
@@ -46,7 +46,7 @@ class YuanQiPlugin(Star):
             }
             payload = {
                 "agent_id": self.config['agent_id'],
-                "message": user_input  # 更改为 message，可能更符合 API 要求
+                "message": user_input  # 使用 message 字段
             }
             logger.info(f"Sending YuanQi API request: {json.dumps(payload, ensure_ascii=False)}")
 
