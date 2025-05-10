@@ -11,20 +11,25 @@ class YuanQiPlugin(Star):
     def __init__(self, context: Context, config: Optional[AstrBotConfig] = None):
         super().__init__(context)
         self.config = config or {}
-        self.validate_config()
 
     def validate_config(self):
         """Validate configuration parameters."""
         required_fields = ["agent_id", "token", "api_url"]
         for field in required_fields:
             if not self.config.get(field):
-                logger.error(f"Configuration error: '{field}' is missing or empty.")
-                raise ValueError(f"Configuration error: '{field}' is missing or empty.")
+                return False, f"Configuration error: '{field}' is missing or empty."
+        return True, None
 
     @filter.command("yuanqi")
     async def handle_yuanqi_command(self, event: AstrMessageEvent):
         """Handle /yuanqi command to interact with Tencent YuanQi API."""
         try:
+            # Validate configuration
+            is_valid, error_msg = self.validate_config()
+            if not is_valid:
+                yield event.plain_result(error_msg + " 请在管理面板中配置插件。")
+                return
+
             # Extract user input (remove command prefix)
             user_input = event.message_str.strip()
             if not user_input:
