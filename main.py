@@ -31,7 +31,10 @@ class YuanQiPlugin(Star):
                 return
 
             # Extract user input (remove command prefix)
-            user_input = event.message_str.strip()
+            full_message = event.message_str.strip()
+            parts = full_message.split(" ", 1)
+            user_input = parts[1].strip() if len(parts) > 1 else ""
+
             if not user_input:
                 yield event.plain_result("請輸入要發送給元器智能體的消息，例如：/yuanqi 你好")
                 return
@@ -43,8 +46,9 @@ class YuanQiPlugin(Star):
             }
             payload = {
                 "agent_id": self.config['agent_id'],
-                "query": user_input
+                "message": user_input  # 更改为 message，可能更符合 API 要求
             }
+            logger.info(f"Sending YuanQi API request: {json.dumps(payload, ensure_ascii=False)}")
 
             # Send POST request to YuanQi API
             async with httpx.AsyncClient() as client:
@@ -55,6 +59,9 @@ class YuanQiPlugin(Star):
                     timeout=30.0
                 )
 
+            # Log full response for debugging
+            logger.info(f"YuanQi API response: {response.status_code} - {response.text}")
+
             # Handle response
             if response.status_code == 200:
                 result = response.json()
@@ -62,7 +69,7 @@ class YuanQiPlugin(Star):
                 yield event.plain_result(reply)
             else:
                 logger.error(f"YuanQi API request failed: {response.status_code} - {response.text}")
-                yield event.plain_result(f"調用元器智能體失敗：HTTP {response.status_code}")
+                yield event.plain_result(f"調用元器智能體失敗：HTTP {response.status_code} - {response.json().get('error', {}).get('message', '未知错误')}")
         except httpx.HTTPError as e:
             logger.error(f"HTTP error while calling YuanQi API: {e}")
             yield event.plain_result("調用元器智能體時發生網絡錯誤，請稍後重試")
