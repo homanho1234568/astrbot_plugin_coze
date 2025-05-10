@@ -10,7 +10,8 @@ import httpx
 class YuanQiPlugin(Star):
     def __init__(self, context: Context, config: Optional[AstrBotConfig] = None):
         super().__init__(context)
-        self.config = config or {}
+        self.config = config or context.config if hasattr(context, 'config') else {}
+        logger.info(f"YuanQiPlugin initialized with config: {self.config}")
 
     def validate_config(self):
         """Validate configuration parameters."""
