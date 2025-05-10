@@ -1,5 +1,22 @@
 {
-    "agent_id": "",
-    "token": "",
-    "api_url": "https://api.hunyuan.tencent.com/v1/agents"
+  "agent_id": {
+    "description": "腾讯元器 API 的 Agent ID",
+    "type": "string",
+    "hint": "请输入腾讯元器平台提供的 Agent ID",
+    "obvious_hint": true,
+    "default": ""
+  },
+  "token": {
+    "description": "腾讯元器 API 的认证 Token",
+    "type": "string",
+    "hint": "请输入腾讯元器平台提供的 API Token",
+    "obvious_hint": true,
+    "default": ""
+  },
+  "api_url": {
+    "description": "腾讯元器 API 的接口地址",
+    "type": "string",
+    "hint": "腾讯元器 API 的 URL，默认为 https://api.hunyuan.tencent.com/v1/agents",
+    "default": "https://api.hunyuan.tencent.com/v1/agents"
+  }
 }
