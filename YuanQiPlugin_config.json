@@ -1,0 +1,5 @@
+{
+  "bot_id": "your_bot_id",
+  "access_token": "your_access_token",
+  "api_url": "https://api.coze.cn/v3/chat"
+}
