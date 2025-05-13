@@ -4,7 +4,7 @@
 
 # astrbot_plugin_apis
 
-_✨ [astrbot](https://github.com/Soulter/AstrBot) API聚合插件 ✨_
+_✨ [astrbot](https://github.com/Soulter/AstrBot) CozeAPI插件 ✨_
 
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
