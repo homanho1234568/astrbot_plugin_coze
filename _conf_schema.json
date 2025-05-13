@@ -1,22 +1,24 @@
+cat << EOF > /opt/AstrBot/data/plugins/astrbot_plugin_yuanqi/_conf_schema.json
 {
-  "agent_id": {
-    "description": "腾讯元器 API 的 Agent ID",
+  "bot_id": {
+    "description": "扣子智能体 ID",
     "type": "string",
-    "hint": "请输入腾讯元器平台提供的 Agent ID",
+    "hint": "请输入扣子平台提供的智能体 ID",
     "obvious_hint": true,
     "default": ""
   },
-  "token": {
-    "description": "腾讯元器 API 的认证 Token",
+  "access_token": {
+    "description": "扣子 API 的认证 Token",
     "type": "string",
-    "hint": "请输入腾讯元器平台提供的 API Token",
+    "hint": "请输入扣子平台提供的个人访问令牌或 OAuth 密钥",
     "obvious_hint": true,
     "default": ""
   },
   "api_url": {
-    "description": "腾讯元器 API 的接口地址",
+    "description": "扣子 API 的接口地址",
     "type": "string",
-    "hint": "腾讯元器 API 的 URL，默认为 https://api.hunyuan.tencent.com/v1/agents",
-    "default": "https://api.hunyuan.tencent.com/v1/agents"
+    "hint": "扣子 API 的 URL，默认为 https://api.coze.cn/v3/chat",
+    "default": "https://api.coze.cn/v3/chat"
   }
 }
+EOF
