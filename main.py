@@ -7,7 +7,13 @@ from astrbot.api import logger
 import httpx
 import asyncio
 
-@register("Astrbot-Coze-Plugin", "Homanho", "一个用于与扣子 AI 智能体 API 交互的插件", "v1.0.0", "https://github.com/homanho1234568/astrbot_plugin_coze")
+@register(
+    name="Astrbot-Coze-Plugin",
+    author="Homanho",
+    description="一个用于与扣子 AI 智能体 API 交互的插件",
+    version="1.0.0",
+    url="https://github.com/homanho1234568/astrbot_plugin_coze"
+)
 class AstrbotCozePlugin(Star):
     def __init__(self, context: Context, config: Optional[dict] = None, db: Optional[Any] = None):
         logger.info(f"Astrbot-Coze-Plugin 初始化接收到 context: {context}, config: {config}, db: {db}")
@@ -53,6 +59,9 @@ class AstrbotCozePlugin(Star):
         except httpx.HTTPError as e:
             logger.error(f"调用扣子 API 时发生网络错误: {e}")
             return []
+        except Exception as e:
+            logger.error(f"fetch_streaming_data 内部错误: {e}")
+            return []
         return buffer
 
     def process_complete_data(self, buffer: list) -> str:
@@ -71,6 +80,8 @@ class AstrbotCozePlugin(Star):
             elif event_type == "error":
                 logger.error(f"流式响应错误: {event.get('code')} - {event.get('msg')}")
                 return f"智能体返回错误: {event.get('msg', '未知错误')}"
+            elif event_type == "conversation.chat.completed":
+                logger.info(f"对话完成，Token 使用量: {event_content.get('usage', {}).get('token_count', 0)}")
         return full_content if full_content else "未能获取智能体回复，可能无有效响应内容"
 
     @filter.command("coze")
