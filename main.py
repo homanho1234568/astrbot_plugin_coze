@@ -5,7 +5,6 @@ from astrbot.api.star import Star, Context, register
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
 import httpx
-import asyncio
 
 @register("Astrbot-Coze-Plugin", "Homanho", "一个用于与扣子 AI 智能体 API 交互的插件", "v1.0.0", "https://github.com/homanho1234568/astrbot_plugin_coze")
 class AstrbotCozePlugin(Star):
@@ -26,21 +25,6 @@ class AstrbotCozePlugin(Star):
             if not self.config.get(field):
                 return False, f"配置错误：'{field}' 缺失或为空。"
         return True, None
-
-    async def poll_chat_status(self, chat_id: str, headers: dict) -> dict:
-        """轮询 Coze API 直到获取最终回复"""
-        poll_url = f"https://api.coze.cn/v3/chat/{chat_id}"
-        for _ in range(10):  # 最多尝试 10 次
-            async with httpx.AsyncClient() as client:
-                response = await client.get(poll_url, headers=headers, timeout=30.0)
-                logger.info(f"轮询响应: {response.status_code} - {response.text}")
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("data", {}).get("status") == "completed":
-                        return result
-                await asyncio.sleep(2)  # 等待 2 秒
-        logger.error("轮询超时，未获取到 completed 状态")
-        return {}
 
     @filter.command("coze")
     async def handle_coze_command(self, event: AstrMessageEvent):
@@ -91,24 +75,16 @@ class AstrbotCozePlugin(Star):
             if response.status_code == 200:
                 result = response.json()
                 logger.debug(f"API 响应完整内容: {json.dumps(result, ensure_ascii=False)}")
-                chat_id = result.get("data", {}).get("id")
-                if not chat_id:
-                    logger.error(f"未获取到有效的聊天 ID，响应: {json.dumps(result, ensure_ascii=False)}")
-                    yield event.plain_result(f"未获取到有效的聊天 ID，响应: {result.get('msg', '未知错误')}")
-                    return
-
-                # 轮询获取最终回复
-                final_result = await self.poll_chat_status(chat_id, headers)
-                if final_result and final_result.get("data", {}).get("status") == "completed":
-                    messages = final_result.get("data", {}).get("messages", [])
-                    logger.debug(f"轮询消息内容: {json.dumps(messages, ensure_ascii=False)}")
+                messages = result.get("data", {}).get("messages", [])
+                if messages:
                     for msg in messages:
                         if msg.get("role") == "assistant" and msg.get("content"):
                             yield event.plain_result(msg["content"])
                             return
                     yield event.plain_result("智能体未返回有效回复")
                 else:
-                    yield event.plain_result("未能获取智能体回复，可能超时或处理失败")
+                    logger.error(f"响应中未包含 messages 字段: {json.dumps(result, ensure_ascii=False)}")
+                    yield event.plain_result(f"未能获取智能体回复，响应: {result.get('msg', '未知错误')}")
             else:
                 error_message = response.json().get("error", {}).get("message", "未知错误")
                 logger.error(f"扣子 API 请求失败: {response.status_code} - {error_message}")
