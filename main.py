@@ -27,24 +27,6 @@ class AstrbotCozePlugin(Star):
                 return False, f"配置错误：'{field}' 缺失或为空。"
         return True, None
 
-    async def retry_chat(self, headers: dict, payload: dict) -> dict:
-        """重试 API 请求以获取消息"""
-        async with httpx.AsyncClient() as client:
-            for _ in range(3):  # 重试 3 次
-                response = await client.post(
-                    self.config['api_url'],
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0
-                )
-                logger.info(f"重试 API 响应: {response.status_code} - {response.text}")
-                if response.status_code == 200:
-                    result = response.json()
-                    if result.get("data", {}).get("status") == "completed" or result.get("data", {}).get("messages"):
-                        return result
-                await asyncio.sleep(2)  # 等待 2 秒
-        return {}
-
     @filter.command("coze")
     async def handle_coze_command(self, event: AstrMessageEvent):
         try:
@@ -65,10 +47,12 @@ class AstrbotCozePlugin(Star):
                 "Authorization": f"Bearer {self.config['access_token']}",
                 "Content-Type": "application/json"
             }
+            # 使用 session_id 作为 user_id，假设其为 QQ 号或类似标识
+            user_id = event.session_id if event.session_id else "123"
             payload = {
                 "bot_id": self.config['bot_id'],
-                "user_id": event.session_id or "123",
-                "stream": False,
+                "user_id": user_id,
+                "stream": True,  # 默认启用流式传输
                 "auto_save_history": True,
                 "additional_messages": [
                     {
@@ -83,38 +67,59 @@ class AstrbotCozePlugin(Star):
             logger.info(f"发送扣子 API 请求: {json.dumps(payload, ensure_ascii=False)}")
 
             async with httpx.AsyncClient() as client:
-                response = await client.post(
+                async with client.stream(
+                    "POST",
                     self.config['api_url'],
                     headers=headers,
                     json=payload,
-                    timeout=30.0
-                )
+                    timeout=60.0
+                ) as response:
+                    logger.info(f"扣子 API 流式响应状态: {response.status_code}")
+                    if response.status_code != 200:
+                        error_message = await response.aread()
+                        logger.error(f"扣子 API 请求失败: {response.status_code} - {error_message.decode()}")
+                        yield event.plain_result(f"调用智能体失败：HTTP {response.status_code} - {error_message.decode()}")
+                        return
 
-            logger.info(f"扣子 API 响应: {response.status_code} - {response.text}")
-            if response.status_code == 200:
-                result = response.json()
-                logger.debug(f"API 响应完整内容: {json.dumps(result, ensure_ascii=False)}")
-                messages = result.get("data", {}).get("messages", [])
-                if messages:
-                    for msg in messages:
-                        if msg.get("role") == "assistant" and msg.get("content"):
-                            yield event.plain_result(msg["content"])
-                            return
-                else:
-                    logger.info("首次响应无 messages 或状态为 in_progress，尝试重试")
-                    retry_result = await self.retry_chat(headers, payload)
-                    if retry_result:
-                        messages = retry_result.get("data", {}).get("messages", [])
-                        for msg in messages:
-                            if msg.get("role") == "assistant" and msg.get("content"):
-                                yield event.plain_result(msg["content"])
-                                return
-                    logger.error(f"重试后仍无 messages: {json.dumps(retry_result or result, ensure_ascii=False)}")
-                    yield event.plain_result(f"未能获取智能体回复，响应: {json.dumps(retry_result or result, ensure_ascii=False)}")
-            else:
-                error_message = response.json().get("error", {}).get("message", "未知错误")
-                logger.error(f"扣子 API 请求失败: {response.status_code} - {error_message}")
-                yield event.plain_result(f"调用智能体失败：HTTP {response.status_code} - {error_message}")
+                    full_content = ""
+                    async for line in response.aiter_lines():
+                        if line.startswith("data:"):
+                            try:
+                                event_data = json.loads(line[5:].strip())
+                                logger.debug(f"流式事件: {json.dumps(event_data, ensure_ascii=False)}")
+                                event_type = event_data.get("event")
+                                event_content = event_data.get("data", {})
+
+                                if event_type == "conversation.message.delta":
+                                    content = event_content.get("content", "")
+                                    if content:
+                                        full_content += content
+                                        yield event.plain_result(content)  # 实时输出增量内容
+
+                                elif event_type == "conversation.message.completed":
+                                    if event_content.get("role") == "assistant" and event_content.get("content"):
+                                        if full_content:
+                                            yield event.plain_result("")  # 确保增量内容已完整输出
+                                        else:
+                                            yield event.plain_result(event_content["content"])  # 兜底输出完整内容
+
+                                elif event_type == "conversation.chat.completed":
+                                    logger.info(f"对话完成，Token 使用量: {event_content.get('usage', {}).get('token_count', 0)}")
+                                    break
+
+                                elif event_type == "error":
+                                    logger.error(f"流式响应错误: {event_data.get('code')} - {event_data.get('msg')}")
+                                    yield event.plain_result(f"智能体返回错误: {event_data.get('msg', '未知错误')}")
+                                    return
+
+                            except json.JSONDecodeError as e:
+                                logger.error(f"解析流式事件失败: {line} - {str(e)}")
+                                continue
+
+                    if not full_content:
+                        logger.error("流式响应未返回有效消息内容")
+                        yield event.plain_result("未能获取智能体回复，可能无有效响应内容")
+
         except httpx.HTTPError as e:
             logger.error(f"调用扣子 API 时发生网络错误: {e}")
             yield event.plain_result("调用智能体时发生网络错误，请稍后重试")
