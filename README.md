@@ -12,3 +12,15 @@ _✨ [astrbot](https://github.com/Soulter/AstrBot) 扣子API插件 ✨_
 [![GitHub](https://img.shields.io/badge/作者-Homanho-blue)](https://github.com/homanho1234568)
 
 </div>
+
+# AstrBot Coze API Plugin
+
+这是一个为AstrBot开发的插件，用于调用Coze API（扣子平台）进行对话。
+
+## 功能
+- 通过`/coze <消息>`指令调用Coze API
+- 支持异步HTTP请求
+- 错误处理和日志记录
+- 基于`_conf_schema.json`的配置管理
+
+## 开发中....
