@@ -5,6 +5,7 @@ from astrbot.api.star import Star, Context, register
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api import logger
 import httpx
+import asyncio
 
 @register("Astrbot-Coze-Plugin", "Homanho", "一个用于与扣子 AI 智能体 API 交互的插件", "v1.0.0", "https://github.com/homanho1234568/astrbot_plugin_coze")
 class AstrbotCozePlugin(Star):
@@ -25,6 +26,24 @@ class AstrbotCozePlugin(Star):
             if not self.config.get(field):
                 return False, f"配置错误：'{field}' 缺失或为空。"
         return True, None
+
+    async def retry_chat(self, headers: dict, payload: dict) -> dict:
+        """重试 API 请求以获取消息"""
+        async with httpx.AsyncClient() as client:
+            for _ in range(3):  # 重试 3 次
+                response = await client.post(
+                    self.config['api_url'],
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+                logger.info(f"重试 API 响应: {response.status_code} - {response.text}")
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get("data", {}).get("status") == "completed" or result.get("data", {}).get("messages"):
+                        return result
+                await asyncio.sleep(2)  # 等待 2 秒
+        return {}
 
     @filter.command("coze")
     async def handle_coze_command(self, event: AstrMessageEvent):
@@ -81,10 +100,17 @@ class AstrbotCozePlugin(Star):
                         if msg.get("role") == "assistant" and msg.get("content"):
                             yield event.plain_result(msg["content"])
                             return
-                    yield event.plain_result("智能体未返回有效回复")
                 else:
-                    logger.error(f"响应中未包含 messages 字段: {json.dumps(result, ensure_ascii=False)}")
-                    yield event.plain_result(f"未能获取智能体回复，响应: {result.get('msg', '未知错误')}")
+                    logger.info("首次响应无 messages 或状态为 in_progress，尝试重试")
+                    retry_result = await self.retry_chat(headers, payload)
+                    if retry_result:
+                        messages = retry_result.get("data", {}).get("messages", [])
+                        for msg in messages:
+                            if msg.get("role") == "assistant" and msg.get("content"):
+                                yield event.plain_result(msg["content"])
+                                return
+                    logger.error(f"重试后仍无 messages: {json.dumps(retry_result or result, ensure_ascii=False)}")
+                    yield event.plain_result(f"未能获取智能体回复，响应: {json.dumps(retry_result or result, ensure_ascii=False)}")
             else:
                 error_message = response.json().get("error", {}).get("message", "未知错误")
                 logger.error(f"扣子 API 请求失败: {response.status_code} - {error_message}")
